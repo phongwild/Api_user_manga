@@ -11,29 +11,29 @@ The Netflix-like Streaming Platform API is a comprehensive RESTful web service t
 #### Base URL
 
 ```
-https://netflix-api-g992.onrender.com
+https://app-netflix-api.vercel.app/
 ```
 ### User Routes
 All the data to be sent in JSON format in request body.
 
 ```http
-POST https://netflix-api-g992.onrender.com/login
+POST https://app-netflix-api.vercel.app/user/login
 ```
 
 ```http
-POST https://netflix-api-g992.onrender.com/register
+POST https://app-netflix-api.vercel.app/user/register
 ```
 
 ```http
-GET https://netflix-api-g992.onrender.com/logout
+GET https://app-netflix-api.vercel.app/user/logout
 ```
 
 ```http
-POST https://netflix-api-g992.onrender.com/forgotpassword
+POST https://app-netflix-api.vercel.app/user/forgotpassword
 ```
 
 ```http
-GET https://netflix-api-g992.onrender.com/profile
+GET https://app-netflix-api.vercel.app/user/profile
 ```
 
 | Route | description                       |
@@ -47,38 +47,38 @@ GET https://netflix-api-g992.onrender.com/profile
 All these routes requires that the user is first logged in. Otherwise it does not allow to access the data.
 
 ```http
-GET https://netflix-api-g992.onrender.com/media
+GET https://app-netflix-api.vercel.app/data/media
 ```
 
 ```http
-GET https://netflix-api-g992.onrender.com/media/${mediaid}
+GET https://app-netflix-api.vercel.app/data/media${mediaid}
 ```
 
 ```http
-GET https://netflix-api-g992.onrender.com/media/watchlist/${userid}
+GET https://app-netflix-api.vercel.app/data/mediawatchlist/${userid}
 ```
 
 ```http
-GET https://netflix-api-g992.onrender.com/media/watchlist/${mediaid}/${userid}
-POST https://netflix-api-g992.onrender.com/media/watchlist/${mediaid}/${userid}
+GET https://app-netflix-api.vercel.app/data/media/watchlist/${mediaid}/${userid}
+POST https://app-netflix-api.vercel.app/data/media/watchlist/${mediaid}/${userid}
 ```
 ```http
-POST https://netflix-api-g992.onrender.com/media/stream/${mediaid}/${userid}
-```
-
-```http
-GET https://netflix-api-g992.onrender.com/media/history/${userid}
+POST https://app-netflix-api.vercel.app/data/media/stream/${mediaid}/${userid}
 ```
 
 ```http
-POST https://netflix-api-g992.onrender.com/media/history/${userid}/${mediaid}
+GET https://app-netflix-api.vercel.app/data/media/history/${userid}
 ```
 
 ```http
-GET https://netflix-api-g992.onrender.com/media/search/${search}
+POST https://app-netflix-api.vercel.app/data/media/history/${userid}/${mediaid}
+```
+
+```http
+GET https://app-netflix-api.vercel.app/data/media/search/${search}
 ```
 ```http
-GET https://netflix-api-g992.onrender.com/media/recommend/${userid}
+GET https://app-netflix-api.vercel.app/data/media/recommend/${userid}
 ```
 
 | Parameter | Type     | Description                       |
@@ -94,7 +94,7 @@ GET https://netflix-api-g992.onrender.com/media/recommend/${userid}
 ### Subscription Route
 
 ```http
-POST https://netflix-api-g992.onrender.com/payment
+POST https://app-netflix-api.vercel.app/subscription/payment
 ```
 
 
@@ -106,31 +106,3 @@ POST https://netflix-api-g992.onrender.com/payment
 **Server:** Node, Express
 
 **DataBase:** MongoDB
-
-
-## Run Locally
-
-Clone the project
-
-```bash
-  git clone https://github.com/Xaverick/NetflixAPI.git
-```
-
-Go to the project directory
-
-```bash
-  cd my-project
-```
-
-Install dependencies
-
-```bash
-  npm install
-```
-
-Start the server
-
-```bash
-  nodemon app.js
-```
-
