@@ -6,14 +6,14 @@ const Mailgen = require('mailgen');
 
 module.exports.login = async (req, res) => {
     let { email, password } = req.body;
-    if(!email || !password) res.status(400).json('missing fields');
-    else{
+    if (!email || !password) res.status(400).json('missing fields');
+    else {
         email = email.toLowerCase();
-        const user = await User.findOne({ email: email});
-        if(user && bcrypt.compareSync(password, user.password)) {
+        const user = await User.findOne({ email: email });
+        if (user && bcrypt.compareSync(password, user.password)) {
             const token = jwt.sign({ id: user._id }, `${process.env.SECRET}`, { expiresIn: '1h' });
-            res.cookie('jwt', token, { signed: true,httpOnly: true ,maxAge: 1000 * 60 * 60 }).json('login');
-        } 
+            res.cookie('jwt', token, { signed: true, httpOnly: true, maxAge: 1000 * 60 * 60 }).json('login');
+        }
         else {
             res.status(400).json('login failed');
         }
@@ -25,16 +25,16 @@ module.exports.login = async (req, res) => {
 module.exports.register = async (req, res) => {
     let { username, email, password } = req.body;
     email = email.toLowerCase();
-    const registeredEmail = await User.findOne({email: email});
+    const registeredEmail = await User.findOne({ email: email });
 
-    if(registeredEmail){
+    if (registeredEmail) {
         res.status(400).json('email already exists');
     }
 
-    else{
+    else {
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(password, salt);
-        await User.create({username, email, password: hash});
+        await User.create({ username, email, password: hash });
         res.json('register');
     }
 }
@@ -47,23 +47,23 @@ module.exports.logout = (req, res) => {
 
 module.exports.profile = async (req, res) => {
     const token = req.signedCookies.jwt;
-    if(token){
+    if (token) {
         const decoded = jwt.verify(token, `${process.env.SECRET}`);
         const user = await User.findById(decoded.id);
         res.json(user);
     }
-    else{
+    else {
         res.status(400).json('no token');
     }
 }
 
 
 module.exports.forgotPassword = async (req, res) => {
-    const { email} = req.body;
-    const user = await User.findOne({email: email});
-    if(user){
+    const { email } = req.body;
+    const user = await User.findOne({ email: email });
+    if (user) {
         const secret = `${process.env.SECRET}${user.password}`;
-        const token = jwt.sign({ id: user._id } , secret , { expiresIn: '5m' });
+        const token = jwt.sign({ id: user._id }, secret, { expiresIn: '5m' });
         // const link = `${clientLink}/resetpassword/${user._id}/${token}`;
         // const link = `http://localhost:3000/user/resetpassword/${user._id}/${token}`;
         // res.json(link);
@@ -112,11 +112,11 @@ module.exports.forgotPassword = async (req, res) => {
         };
 
         transporter.sendMail(message)
-        .then(() => res.status(201).json('email sent'))
-        .catch((err) => res.status(400).json(err));
-        
-    } 
-    else{
+            .then(() => res.status(201).json('email sent'))
+            .catch((err) => res.status(400).json(err));
+
+    }
+    else {
         res.status(400).json('email not registered');
     }
 }
@@ -126,17 +126,17 @@ module.exports.resetPassword = async (req, res) => {
     const { id, token } = req.params;
     const { password } = req.body;
     const oldUser = await User.findById(id);
-    if(!oldUser){
+    if (!oldUser) {
         res.status(400).json('user not found');
     }
-    else{
+    else {
         const secret = `${process.env.SECRET}${oldUser.password}`;
-        if(jwt.verify(token,secret)){
+        if (jwt.verify(token, secret)) {
             oldUser.password = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
             await oldUser.save();
             res.json('password changed');
         }
-        else{
+        else {
             res.status(400).json('invalid token');
         }
     }
