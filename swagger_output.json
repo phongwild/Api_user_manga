@@ -1,0 +1,173 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "NettromDex API docs",
+    "version": "1.0.0",
+    "description": "API documentation for NettromDex"
+  },
+  "host": "api-manga-user.vercel.app",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/user/login": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "User Login",
+        "description": "Allows users to log in to the system",
+        "responses": {
+          "200": {
+            "description": "Successful login"
+          },
+          "400": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/user/register": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "User Registration",
+        "description": "Registers a new user",
+        "responses": {
+          "201": {
+            "description": "User registered successfully"
+          },
+          "400": {
+            "description": "Invalid data"
+          }
+        }
+      }
+    },
+    "/user/logout": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "User Logout",
+        "description": "Logs out the user",
+        "responses": {
+          "200": {
+            "description": "Logout successful"
+          }
+        }
+      }
+    },
+    "/follow/{uid}": {
+      "get": {
+        "tags": [
+          "Follow"
+        ],
+        "summary": "Get Follow List",
+        "description": "Get a list of followed manga for a user",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List retrieved successfully"
+          }
+        }
+      }
+    },
+    "/follow/add/{uid}": {
+      "post": {
+        "tags": [
+          "Follow"
+        ],
+        "summary": "Follow Manga",
+        "description": "Adds a manga to the user's follow list",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Manga followed successfully"
+          }
+        }
+      }
+    },
+    "/follow/remove/{uid}": {
+      "post": {
+        "tags": [
+          "Follow"
+        ],
+        "summary": "Unfollow Manga",
+        "description": "Removes a manga from the user's follow list",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manga unfollowed successfully"
+          }
+        }
+      }
+    },
+    "/history/{uid}": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get Reading History",
+        "description": "Retrieves the reading history of a user",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History retrieved successfully"
+          }
+        }
+      }
+    },
+    "/history/add/{uid}": {
+      "post": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Add to Reading History",
+        "description": "Adds a manga to the user's reading history",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Manga added to history successfully"
+          }
+        }
+      }
+    }
+  }
+}

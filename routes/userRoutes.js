@@ -1,12 +1,12 @@
 const router = require('express').Router();
-const user  = require('../controllers/userControllers');
+const user = require('../controllers/userControllers');
 const catchAsync = require('../utils/catchAsync');
 const { isLoggedIn } = require('../middleware.js');
 
 router.route('/login')
     .post(catchAsync(user.login));
-    
-    
+
+
 router.route('/register')
     .post(catchAsync(user.register));
 
@@ -24,7 +24,7 @@ router.route('/resetpassword/:id/:token')
 
 
 router.route('/profile')
-    .get(isLoggedIn,catchAsync(user.profile));
+    .get(isLoggedIn, catchAsync(user.profile));
 
 
 

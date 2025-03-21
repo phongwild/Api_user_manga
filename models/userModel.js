@@ -8,7 +8,7 @@ const userSchema = new schema({
         min: 6,
     },
 
-    email: { 
+    email: {
         type: String,
         required: true,
         unique: true,
@@ -17,34 +17,33 @@ const userSchema = new schema({
 
     },
 
-    password: { 
+    password: {
         type: String,
         required: true,
         min: 8,
     },
 
-    subscription_status: {
-        type: Boolean,
-        default: false,
-    },
-
-    watch_list : [
+    follow_list: [
         {
-            type: schema.Types.ObjectId,
-            ref: 'media',
-            
+            type: String,
+            required: true,
         },
     ],
-    
 
     history: [
         {
-            type: schema.Types.ObjectId,
-            ref: 'media',
+            mangaId: {
+                type: String,
+                required: true,
+            },
+            createdAt: {
+                type: Date,
+                default: Date.now,
+            }
         }
     ]
 
-});
+}, { timestamps: true });
 
 
 module.exports = mongoose.model('User', userSchema);
