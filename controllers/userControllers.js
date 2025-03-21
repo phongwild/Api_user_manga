@@ -64,11 +64,8 @@ module.exports.forgotPassword = async (req, res) => {
     if (user) {
         const secret = `${process.env.SECRET}${user.password}`;
         const token = jwt.sign({ id: user._id }, secret, { expiresIn: '5m' });
-        // const link = `${clientLink}/resetpassword/${user._id}/${token}`;
-        // const link = `http://localhost:3000/user/resetpassword/${user._id}/${token}`;
-        // res.json(link);
-        //sending Email to the user Gmail
 
+        // Configure nodemailer with Gmail service
         let config = {
             service: 'gmail',
             auth: {
@@ -76,34 +73,38 @@ module.exports.forgotPassword = async (req, res) => {
                 pass: `${process.env.PASSWORD}`
             }
         };
+
         let transporter = nodemailer.createTransport(config);
 
+        // Create email body using Mailgen
         let MailGenerator = new Mailgen({
             theme: 'default',
             product: {
-                name: 'MyApp',
+                name: 'Netflix API',
                 link: 'https://mailgen.js/'
             }
-
         });
 
         var response = {
             body: {
-                name: 'John Appleseed',
-                intro: 'You have received this email because a password reset request for your account was received.',
+                name: user.username, // Use user's name to personalize
+                intro: 'We received a request to reset the password for your account.',
                 action: {
-                    instructions: 'Click the button below to reset your password:',
+                    instructions: 'To reset your password, please click the button below:',
                     button: {
-                        color: '#DC4D2F',
-                        text: 'Click here',
-                        link: `http://localhost:3000/user/resetpassword/${user._id}/${token}`
+                        color: '#4CAF50', // Green button for better contrast
+                        text: 'Reset Password',
+                        link: `https://app-netflix-api.vercel.app/user/resetpassword/${user._id}/${token}`
                     }
                 },
-                outro: 'If you did not request a password reset, no further action is required on your part.'
+                outro: 'If you didn’t request a password reset, please ignore this email. Your password will remain unchanged.',
+                signature: 'Best regards, Netflix API'
             }
         };
 
+        // Generate email HTML content
         var emailBody = MailGenerator.generate(response);
+
         let message = {
             from: `${process.env.EMAIL}`,
             to: `${email}`,
@@ -112,14 +113,14 @@ module.exports.forgotPassword = async (req, res) => {
         };
 
         transporter.sendMail(message)
-            .then(() => res.status(201).json('email sent'))
-            .catch((err) => res.status(400).json(err));
+            .then(() => res.status(201).json('Email sent successfully!'))
+            .catch((err) => res.status(400).json({ message: 'Error sending email', error: err }));
 
+    } else {
+        res.status(400).json('Email not registered');
     }
-    else {
-        res.status(400).json('email not registered');
-    }
-}
+};
+
 
 
 module.exports.resetPassword = async (req, res) => {
