@@ -8,6 +8,7 @@ const cron = require('node-cron');
 const swaggerUi = require('swagger-ui-express');
 const mongoose = require('mongoose');
 const fs = require('fs');
+const path = require('path');
 
 // Kết nối MongoDB
 const dbURL = process.env.DB_URL;
@@ -32,8 +33,14 @@ app.use('/follow', follow);
 app.use('/history', history);
 
 // Swagger setup
-const swaggerFile = JSON.parse(fs.readFileSync('./swagger_output.json', 'utf8'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
+const swaggerPath = path.join(__dirname, 'swagger_output.json');
+if (fs.existsSync(swaggerPath)) {
+    const swaggerFile = JSON.parse(fs.readFileSync(swaggerPath, 'utf8'));
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
+} else {
+    console.error('⚠️  swagger_output.json not found!');
+}
+
 
 // Cron job dọn dẹp lịch sử hàng ngày
 cron.schedule('0 0 * * *', () => {
