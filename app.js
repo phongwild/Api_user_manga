@@ -41,7 +41,6 @@ if (fs.existsSync(swaggerPath)) {
     console.error('⚠️  swagger_output.json not found!');
 }
 
-
 // Cron job dọn dẹp lịch sử hàng ngày
 cron.schedule('0 0 * * *', () => {
     console.log('Running history cleanup every day...');
