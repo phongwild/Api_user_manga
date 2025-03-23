@@ -51,9 +51,9 @@ module.exports.getList = async (req, res) => {
         res.status(200).json({
             status: true,
             data: mangaList,
-            total: user.follow_list.length,
+            total: user.history.length,
             currentPage: page,
-            totalPages: Math.ceil(user.follow_list.length / pageSize),
+            totalPages: Math.ceil(user.history.length / pageSize),
             limit: pageSize
         });
     } catch (error) {
