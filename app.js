@@ -42,7 +42,7 @@ if (fs.existsSync(swaggerPath)) {
 }
 
 // Cron job dọn dẹp lịch sử hàng ngày
-cron.schedule('0 0 * * *', () => {
+cron.schedule('0 20 * * *', () => {
     console.log('Running history cleanup every day...');
     removeOldHistoryCron();
 });
