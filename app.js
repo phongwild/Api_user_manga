@@ -43,6 +43,7 @@ if (fs.existsSync(swaggerPath)) {
 
 // Cron job dọn dẹp lịch sử hàng ngày
 cron.schedule('0 20 * * *', () => {
+    console.log("Server Time Now:", new Date().toLocaleString());
     console.log('Running history cleanup every day...');
     removeOldHistoryCron();
 });
