@@ -64,7 +64,9 @@ module.exports.getList = async (req, res) => {
         const page = Math.max(1, parseInt(offset)); // đảm bảo offset >= 1
         const pageSize = parseInt(limit);
         const start = (page - 1) * pageSize; // tính vị trí bắt đầu của trang
-        const mangaList = user.follow_list.slice(start, start + pageSize);
+        const reversedList = [...user.follow_list].reverse();
+        const mangaList = reversedList.slice(start, start + pageSize);
+
 
         res.status(200).json({
             status: true,
