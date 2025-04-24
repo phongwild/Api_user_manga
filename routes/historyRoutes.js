@@ -9,5 +9,8 @@ router.route('/add/:uid')
 router.route('/:uid')
     .get(catchAsync(historyCtrl.getList));
 
+router.route('/clear/:uid')
+    .delete(catchAsync(historyCtrl.clearOldHistory));
+
 
 module.exports = router;
