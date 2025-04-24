@@ -61,3 +61,42 @@ module.exports.getList = async (req, res) => {
         res.status(500).json({ status: false, message: 'Internal server error' });
     }
 };
+
+module.exports.clearOldHistory = async (req, res) => {
+    const { uid } = req.params;
+
+    try {
+        const user = await User.findById(uid);
+        if (!user) {
+            return res.status(400).json({ status: false, message: 'User not found' });
+        }
+
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        // Lọc ra những mục còn lại (chưa quá 7 ngày)
+        const originalLength = user.history.length;
+        if (originalLength === 0) {
+            return res.status(404).json({ status: false, message: 'No history found' });
+        }
+        const newHistory = user.history.filter(item => new Date(item.createdAt) > sevenDaysAgo);
+
+        // Tính xem đã xoá bao nhiêu mục
+        const removedCount = originalLength - newHistory.length;
+
+        if (removedCount > 0) {
+            user.history = newHistory; // Cập nhật lại danh sách history sau khi xoá mục quá hạn
+            await user.save();
+        }
+
+        res.status(200).json({
+            status: true,
+            removed: removedCount,
+            remaining: user.history.length,
+            message: `${removedCount} history entries older than 7 days removed`
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: false, message: 'Internal server error' });
+    }
+};
