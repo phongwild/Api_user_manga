@@ -26,11 +26,13 @@ app.use(express.json());
 const user = require('./routes/userRoutes');
 const follow = require('./routes/followRoutes');
 const history = require('./routes/historyRoutes');
+const comment = require('./routes/commentRoutes');
 const removeOldHistoryCron = require('./utils/cronJob');
 
 app.use('/user', user);
 app.use('/follow', follow);
 app.use('/history', history);
+app.use('/comments', comment);
 
 // Swagger setup
 const swaggerPath = path.join(__dirname, 'swagger_output.json');
