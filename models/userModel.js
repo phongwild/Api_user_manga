@@ -2,19 +2,19 @@ const mongoose = require('mongoose');
 const schema = mongoose.Schema;
 
 const userSchema = new schema({
+    googleId: { type: String },
     username: {
         type: String,
         required: true,
         min: 6,
     },
-
+    avatar: { type: String },
     email: {
         type: String,
         required: true,
         unique: true,
         min: 6,
         max: 255,
-
     },
 
     password: {

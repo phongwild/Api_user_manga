@@ -4,7 +4,15 @@ exports.getCommentsByManga = async (req, res) => {
     try {
         const { mangaId } = req.params;
 
-        const mangaComments = await MangaComments.findOne({ mangaId });
+        const mangaComments = await MangaComments.findOne({ mangaId })
+            .populate({
+                path: 'comments.userId',
+                select: 'username avatar', // Chỉ lấy trường username và avatar
+            })
+            .populate({
+                path: 'comments.replies.userId',
+                select: 'username avatar', // Reply cũng lấy thông tin user
+            });
 
         if (!mangaComments) {
             return res.status(404).json({
@@ -26,6 +34,7 @@ exports.getCommentsByManga = async (req, res) => {
         });
     }
 };
+
 
 exports.addComment = async (req, res) => {
     try {
