@@ -9,6 +9,9 @@ const swaggerUi = require('swagger-ui-express');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const session = require('express-session');
+const passport = require('passport');
+require('./config/passport');
 
 // Kết nối MongoDB
 const dbURL = process.env.DB_URL;
@@ -22,17 +25,27 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser(process.env.SECRET));
 app.use(express.json());
 
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Import routes
 const user = require('./routes/userRoutes');
 const follow = require('./routes/followRoutes');
 const history = require('./routes/historyRoutes');
 const comment = require('./routes/commentRoutes');
 const removeOldHistoryCron = require('./utils/cronJob');
+const auth = require('./routes/authRoutes');
 
 app.use('/user', user);
 app.use('/follow', follow);
 app.use('/history', history);
 app.use('/comments', comment);
+app.use('/auth', auth);
 
 // Swagger setup
 const swaggerPath = path.join(__dirname, 'swagger_output.json');
