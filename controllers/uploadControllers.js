@@ -1,7 +1,5 @@
 const axios = require('axios');
-const fs = require('fs');
 require('dotenv').config();
-const params = new URLSearchParams();
 
 exports.uploadImg = async (req, res) => {
     try {
@@ -9,10 +7,10 @@ exports.uploadImg = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Không có file được gửi lên.' });
         }
 
-        const filePath = req.file.path;
-        const fileData = fs.readFileSync(filePath, { encoding: 'base64' });
+        const fileData = req.file.buffer.toString('base64');
         const requestUrl = `https://api.imgbb.com/1/upload?key=${process.env.ImgBB_API_KEY}`;
 
+        const params = new URLSearchParams();
         params.append('image', fileData);
 
         const response = await axios.post(requestUrl, params, {
@@ -20,8 +18,6 @@ exports.uploadImg = async (req, res) => {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
-
-        fs.unlinkSync(filePath);
 
         if (response.status === 200) {
             res.status(200).json({
