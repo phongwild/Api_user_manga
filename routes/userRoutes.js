@@ -25,7 +25,7 @@ router.route('/forgotpassword')
     .post(catchAsync(user.forgotPassword));
 
 
-router.route('/resetpassword/:id/:token')
+router.route('/resetpassword/:userId/:token')
     .post(catchAsync(user.resetPassword));
 
 

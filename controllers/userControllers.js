@@ -181,87 +181,62 @@ module.exports.profile = async (req, res) => {
 
 module.exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
-    const user = await User.findOne({ email: email });
-    if (user) {
-        const secret = `${process.env.SECRET}${user.password}`;
-        const token = jwt.sign({ id: user._id }, secret, { expiresIn: '5m' });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ status: false, message: 'Email not registered' });
 
-        // Configure nodemailer with Gmail service
-        let config = {
-            service: 'gmail',
-            auth: {
-                user: `${process.env.EMAIL}`,
-                pass: `${process.env.PASSWORD}`
-            }
-        };
+    const secret = `${process.env.SECRET}${user.password}`;
+    const token = jwt.sign({ id: user._id }, secret, { expiresIn: '10m' });
 
-        let transporter = nodemailer.createTransport(config);
+    // Gửi email đơn giản (không cần link)
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL,
+            pass: process.env.PASSWORD
+        }
+    });
 
-        // Create email body using Mailgen
-        let MailGenerator = new Mailgen({
-            theme: 'default',
-            product: {
-                name: 'Netflix API',
-                link: 'https://mailgen.js/'
-            }
-        });
+    const message = {
+        from: process.env.EMAIL,
+        to: email,
+        subject: 'Reset Password Token',
+        html: `
+            <h3>Hello ${user.username}</h3>
+            <p>Use this token to reset your password from the app:</p>
+            <pre><b>${token}</b></pre>
+            <p>This token will expire in 10 minutes.</p>
+        `
+    };
 
-        var response = {
-            body: {
-                name: user.username, // Use user's name to personalize
-                intro: 'We received a request to reset the password for your account.',
-                action: {
-                    instructions: 'To reset your password, please click the button below:',
-                    button: {
-                        color: '#4CAF50', // Green button for better contrast
-                        text: 'Reset Password',
-                        link: `${req.protocol}://${req.get('host')}/user/resetpassword/${user._id}/${token}`
-                    }
-                },
-                outro: 'If you didn’t request a password reset, please ignore this email. Your password will remain unchanged.',
-                signature: 'Best regards, Netflix API'
-            }
-        };
-
-        // Generate email HTML content
-        var emailBody = MailGenerator.generate(response);
-
-        let message = {
-            from: `${process.env.EMAIL}`,
-            to: `${email}`,
-            subject: 'Password Reset Request',
-            html: emailBody
-        };
-
-        transporter.sendMail(message)
-            .then(() => res.status(201).json('Email sent successfully!'))
-            .catch((err) => res.status(400).json({ message: 'Error sending email', error: err }));
-
-    } else {
-        res.status(400).json('Email not registered');
+    try {
+        await transporter.sendMail(message);
+        res.status(200).json({ status: true, message: 'Token sent to email', userId: user._id });
+    } catch (err) {
+        res.status(500).json({ status: false, message: 'Send mail failed', error: err.message });
     }
 };
 
 module.exports.resetPassword = async (req, res) => {
-    const { id, token } = req.params;
-    const { password } = req.body;
-    const oldUser = await User.findById(id);
-    if (!oldUser) {
-        res.status(400).json('user not found');
-    }
-    else {
-        const secret = `${process.env.SECRET}${oldUser.password}`;
-        if (jwt.verify(token, secret)) {
-            oldUser.password = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
-            await oldUser.save();
-            res.json('password changed');
-        }
-        else {
-            res.status(400).json('invalid token');
-        }
-    }
+    const { userId, token } = req.params;
+    const { newPassword } = req.body;
 
-}
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ status: false, message: 'User not found' });
+
+    const secret = `${process.env.SECRET}${user.password}`;
+
+    try {
+        jwt.verify(token, secret);
+
+        user.password = bcrypt.hashSync(newPassword, 10);
+        await user.save();
+
+        res.status(200).json({ status: true, message: 'Password changed successfully' });
+    } catch (err) {
+        res.status(400).json({ status: false, message: 'Invalid or expired token' });
+    }
+};
+
 
 module.exports.getUserByID = async (req, res) => {
     try {
