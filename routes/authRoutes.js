@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
+const authCtrl = require('../controllers/authControllers')
 
 // Khởi tạo xác thực với Google
 router.get('/google',
@@ -22,5 +23,8 @@ router.get('/logout', (req, res) => {
         res.redirect('/');
     });
 });
+
+router.post('/login', authCtrl.loginMobile);
+
 
 module.exports = router;
