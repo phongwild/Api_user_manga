@@ -261,19 +261,88 @@ module.exports.getUserByID = async (req, res) => {
 module.exports.updateProfile = async (req, res) => {
     try {
         const { id } = req.params;
-        const update = req.body;
+        const allowedFields = ['username', 'avatar'];
+        const updateFields = {};
 
-        //check user
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateFields[field] = req.body[field];
+            }
+        }
+
         const user = await User.findById(id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        //update user
-        const updateUser = await User.findByIdAndUpdate(id, update, { new: true, runValidators: true });
-        res.status(200).json({ success: true, data: updateUser });
+        const updatedUser = await User.findByIdAndUpdate(id, updateFields, {
+            new: true,
+            runValidators: true,
+        });
+
+        return res.status(200).json({ success: true, data: updatedUser });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
     }
-}
+};
 
+
+module.exports.changePassword = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { oldPassword, newPassword } = req.body;
+
+        // Validate dữ liệu
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Old password and new password are required'
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'New password must be at least 6 characters'
+            });
+        }
+
+        // Kiểm tra user tồn tại
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // So sánh mật khẩu cũ
+        const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Old password is incorrect'
+            });
+        }
+
+        // Hash mật khẩu mới
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Lưu lại
+        user.password = hashedPassword;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Password changed successfully',
+        });
+    } catch (error) {
+        console.error('Change password error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};

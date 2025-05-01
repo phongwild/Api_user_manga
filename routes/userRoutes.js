@@ -20,6 +20,9 @@ router.route('/update-profile/:id')
 router.route('/logout')
     .get(catchAsync(user.logout));
 
+router.route('/change-password/:id')
+    .put(catchAsync(user.changePassword));
+
 
 router.route('/forgotpassword')
     .post(catchAsync(user.forgotPassword));
