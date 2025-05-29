@@ -41,6 +41,7 @@ const comment = require('./routes/commentRoutes');
 const removeOldHistoryCron = require('./utils/cronJob');
 const auth = require('./routes/authRoutes');
 const upload = require('./routes/uploadRoute');
+const mangadex = require('./routes/proxyMangaDexRoutes');
 
 app.use('/user', user);
 app.use('/follow', follow);
@@ -48,6 +49,8 @@ app.use('/history', history);
 app.use('/comments', comment);
 app.use('/auth', auth);
 app.use('/upload', upload);
+app.use('/mangadex', mangadex);
+
 
 // Swagger setup
 const swaggerPath = path.join(__dirname, 'swagger_output.json');
