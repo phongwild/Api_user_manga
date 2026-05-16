@@ -51,7 +51,14 @@ module.exports.login = async (req, res) => {
         const user = await User.findOne({ email: email });
         if (user && bcrypt.compareSync(password, user.password)) {
             const token = jwt.sign({ id: user._id }, `${process.env.SECRET}`, { expiresIn: '30d' });
-            res.cookie('jwt', token, { signed: true, httpOnly: true, maxAge: 1000 * 60 * 60 }).json(user);
+            res.cookie('jwt', token, { signed: true, httpOnly: true, maxAge: 1000 * 60 * 60 }).json({
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                avatar: user.avatar,
+                follow_list: user.follow_list,
+                history: user.history,
+            });
         }
         else {
             res.status(400).json('login failed');

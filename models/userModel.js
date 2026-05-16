@@ -23,25 +23,23 @@ const userSchema = new schema({
         min: 8,
     },
 
-    follow_list: [
-        {
-            type: String,
-            required: true,
-        },
-    ],
+    follow_list: {
+        type: [String],
+        default: [],
+    },
 
-    history: [
-        {
-            mangaId: {
-                type: String,
-                required: true,
+    history: {
+        type: [
+            {
+                mangaId: String,
+                createdAt: {
+                    type: Date,
+                    default: Date.now,
+                },
             },
-            createdAt: {
-                type: Date,
-                default: Date.now,
-            }
-        }
-    ]
+        ],
+        default: [],
+    },
 
 }, { timestamps: true });
 
