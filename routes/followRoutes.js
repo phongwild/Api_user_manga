@@ -11,5 +11,7 @@ router.route('/add/:uid')
 router.route('/remove/:uid')
     .post(catchAsync(followCtrl.remove_manga_from_follows));
 
+router.route('/check/:uid')
+    .get(catchAsync(followCtrl.check_follow));
 
 module.exports = router;

@@ -81,3 +81,28 @@ module.exports.getList = async (req, res) => {
         res.status(500).json({ status: false, message: 'Internal server error' });
     }
 };
+
+module.exports.check_follow = async (req, res) => {
+    const { uid } = req.params;
+    const { mangaId } = req.query;
+
+    try {
+        const user = await User.findOne({
+            _id: uid,
+            follow_list: mangaId
+        });
+
+        return res.status(200).json({
+            status: true,
+            isFollowing: !!user,
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
+    }
+};
