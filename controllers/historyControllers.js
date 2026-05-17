@@ -10,21 +10,39 @@ module.exports.history = async (req, res) => {
             return res.status(400).json({ status: false, message: 'User not found' });
         }
 
-        // Lấy thời gian hiện tại
-        const now = new Date();
-
         // Kiểm tra xem manga đã có trong history chưa
-        const existingEntry = user.history.find((item) => item.mangaId === mangaId);
+        const existingEntry = user.history.find(
+            item => item.mangaId === mangaId
+        );
 
         if (existingEntry) {
-            return res.status(200).json({ status: true, alreadyExists: true, message: 'Manga is already in history' });
+            existingEntry.addedAt = new Date();
+
+            await user.save();
+
+            return res.status(200).json({
+                status: true,
+                alreadyExists: true,
+                message: 'History updated'
+            });
         }
 
-        // Nếu chưa có thì thêm vào history
-        user.history.push({ mangaId, addedAt: now });
-        await user.save();
+        user.history.push({
+            mangaId,
+            addedAt: new Date(),
+        });
+        user.history.sort(
+            (a, b) => new Date(b.addedAt) - new Date(a.addedAt)
+        );
 
-        res.status(200).json({ status: true, alreadyExists: false, message: 'Manga added to history' });
+        user.history = user.history.slice(0, 200);
+
+        await user.save();
+        return res.status(200).json({
+            status: true,
+            alreadyExists: false,
+            message: 'Manga added to history'
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ status: false, message: 'Internal server error' });
@@ -43,11 +61,13 @@ module.exports.getList = async (req, res) => {
             return res.status(400).json({ status: false, message: 'User not found' });
         }
 
-        const page = Math.max(1, parseInt(offset)); // đảm bảo offset >= 1
-        const pageSize = parseInt(limit);
+        const page = Math.max(1, parseInt(offset) || 1);
+        const pageSize = Math.max(1, parseInt(limit) || 10);
         const start = (page - 1) * pageSize; // tính vị trí bắt đầu của trang
-        const reversedList = [...user.history].reverse();
-        const mangaList = reversedList.slice(start, start + pageSize);
+        const sortedList = [...user.history].sort(
+            (a, b) => new Date(b.addedAt) - new Date(a.addedAt)
+        );
+        const mangaList = sortedList.slice(start, start + pageSize);
         res.status(200).json({
             status: true,
             data: mangaList,
@@ -77,9 +97,16 @@ module.exports.clearOldHistory = async (req, res) => {
         // Lọc ra những mục còn lại (chưa quá 7 ngày)
         const originalLength = user.history.length;
         if (originalLength === 0) {
-            return res.status(404).json({ status: false, message: 'No history found' });
+            return res.status(200).json({
+                status: true,
+                removed: 0,
+                remaining: 0,
+                message: 'No history to clear'
+            });
         }
-        const newHistory = user.history.filter(item => new Date(item.createdAt) > sevenDaysAgo);
+        const newHistory = user.history.filter(
+            item => new Date(item.addedAt) > sevenDaysAgo
+        );
 
         // Tính xem đã xoá bao nhiêu mục
         const removedCount = originalLength - newHistory.length;

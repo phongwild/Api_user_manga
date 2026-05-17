@@ -12,5 +12,4 @@ router.route('/:uid')
 router.route('/clear/:uid')
     .delete(catchAsync(historyCtrl.clearOldHistory));
 
-
 module.exports = router;
