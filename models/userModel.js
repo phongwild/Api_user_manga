@@ -40,6 +40,29 @@ const userSchema = new schema({
         ],
         default: [],
     },
+    reading_progress: {
+        type: [
+            {
+                mangaId: String,
+                chapterId: String,
+                chapterTitle: String,
+                chapterNumber: String,
+                page: {
+                    type: Number,
+                    default: 0,
+                },
+                completed: {
+                    type: Boolean,
+                    default: false,
+                },
+                updatedAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
+        default: [],
+    },
 
 }, { timestamps: true });
 
