@@ -112,8 +112,10 @@ module.exports.clearOldHistory = async (req, res) => {
         const removedCount = originalLength - newHistory.length;
 
         if (removedCount > 0) {
-            user.history = newHistory; // Cập nhật lại danh sách history sau khi xoá mục quá hạn
-            await user.save();
+            await User.updateOne(
+                { _id: uid },
+                { $set: { history: newHistory } }
+            );
         }
 
         res.status(200).json({
