@@ -32,7 +32,7 @@ const userSchema = new schema({
         type: [
             {
                 mangaId: String,
-                createdAt: {
+                addedAt: {
                     type: Date,
                     default: Date.now,
                 },
