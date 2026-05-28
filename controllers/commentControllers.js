@@ -5,14 +5,10 @@ exports.getCommentsByManga = async (req, res) => {
         const { mangaId } = req.params;
 
         const mangaComments = await MangaComments.findOne({ mangaId })
-            .populate({
-                path: 'comments.userId',
-                select: 'username avatar', // Chỉ lấy trường username và avatar
-            })
-            .populate({
-                path: 'comments.replies.userId',
-                select: 'username avatar', // Reply cũng lấy thông tin user
-            });
+            .select('comments commentsCount')
+            .populate('comments.userId', 'username avatar')
+            .populate('comments.replies.userId', 'username avatar')
+            .lean();
 
         if (!mangaComments) {
             return res.status(404).json({
@@ -21,13 +17,19 @@ exports.getCommentsByManga = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        mangaComments.comments.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        return res.status(200).json({
             status: true,
             message: 'Get comments successfully',
+            total: mangaComments.commentsCount,
             data: mangaComments.comments
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Get comments failed',
             error: error.message
@@ -35,42 +37,45 @@ exports.getCommentsByManga = async (req, res) => {
     }
 };
 
-
 exports.addComment = async (req, res) => {
     try {
-        const { mangaId } = req.params; // MangaDex ID
-        const { userId, content } = req.body; // User ID và nội dung bình luận
+        const { mangaId } = req.params;
+        const { userId, content } = req.body;
 
-        // Kiểm tra xem manga đã có trong cơ sở dữ liệu chưa
-        let mangaComments = await MangaComments.findOne({ mangaId });
-
-        let newComment;
-
-        if (!mangaComments) {
-            // Nếu không có, tạo mới bản ghi cho manga với comment đầu tiên
-            newComment = { userId, content };
-            mangaComments = new MangaComments({
-                mangaId,
-                comments: [newComment]
+        if (!userId || !content?.trim()) {
+            return res.status(400).json({
+                status: false,
+                message: 'Missing userId or content'
             });
-        } else {
-            // Nếu đã có, thêm bình luận vào danh sách comments
-            newComment = { userId, content };
-            mangaComments.comments.push(newComment);
         }
 
-        await mangaComments.save();
+        const newComment = {
+            userId,
+            content: content.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
 
-        // Lấy comment vừa thêm (ở cuối danh sách)
-        const addedComment = mangaComments.comments[mangaComments.comments.length - 1];
+        const mangaComments = await MangaComments.findOneAndUpdate(
+            { mangaId },
+            {
+                $push: { comments: newComment },
+                $inc: { commentsCount: 1 },
+            },
+            {
+                upsert: true,
+                new: true,
+            }
+        );
 
-        res.status(201).json({
+        return res.status(201).json({
             status: true,
             message: 'Add comment successfully',
-            data: addedComment
+            data: mangaComments.comments[mangaComments.comments.length - 1]
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Add comment failed',
             error: error.message
@@ -78,42 +83,38 @@ exports.addComment = async (req, res) => {
     }
 };
 
-
 exports.editComment = async (req, res) => {
     try {
-        const { mangaId, commentId } = req.params; // ID manga và ID bình luận cần sửa
-        const { content } = req.body; // Nội dung mới
+        const { mangaId, commentId } = req.params;
+        const { content } = req.body;
 
-        const mangaComments = await MangaComments.findOne({ mangaId });
+        const result = await MangaComments.updateOne(
+            {
+                mangaId,
+                'comments._id': commentId
+            },
+            {
+                $set: {
+                    'comments.$.content': content.trim(),
+                    'comments.$.updatedAt': new Date(),
+                }
+            }
+        );
 
-        if (!mangaComments) {
-            return res.status(404).json({
-                status: false,
-                message: 'Manga not found'
-            });
-        }
-
-        // Tìm bình luận cần sửa
-        const comment = mangaComments.comments.id(commentId);
-
-        if (!comment) {
+        if (result.matchedCount === 0) {
             return res.status(404).json({
                 status: false,
                 message: 'Comment not found'
             });
         }
 
-        // Cập nhật nội dung bình luận
-        comment.content = content;
-        await mangaComments.save();
-
-        res.status(200).json({
+        return res.status(200).json({
             status: true,
-            message: 'Comment updated successfully',
-            data: comment
+            message: 'Comment updated successfully'
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Failed to update comment',
             error: error.message
@@ -123,38 +124,34 @@ exports.editComment = async (req, res) => {
 
 exports.deleteComment = async (req, res) => {
     try {
-        const { mangaId, commentId } = req.params; // ID manga và ID bình luận cần xóa
+        const { mangaId, commentId } = req.params;
 
-        const mangaComments = await MangaComments.findOne({ mangaId });
+        const result = await MangaComments.updateOne(
+            { mangaId },
+            {
+                $pull: {
+                    comments: { _id: commentId }
+                },
+                $inc: {
+                    commentsCount: -1
+                }
+            }
+        );
 
-        if (!mangaComments) {
-            return res.status(404).json({
-                status: false,
-                message: 'Manga not found'
-            });
-        }
-
-        // Tìm comment bằng id (chắc chắn commentId là ObjectId)
-        const commentIndex = mangaComments.comments.findIndex(comment => comment._id.toString() === commentId);
-
-        if (commentIndex === -1) {
+        if (result.modifiedCount === 0) {
             return res.status(404).json({
                 status: false,
                 message: 'Comment not found'
             });
         }
 
-        // Xóa bình luận
-        mangaComments.comments.splice(commentIndex, 1);
-
-        await mangaComments.save();
-
-        res.status(200).json({
+        return res.status(200).json({
             status: true,
             message: 'Comment deleted successfully'
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Failed to delete comment',
             error: error.message
@@ -162,53 +159,51 @@ exports.deleteComment = async (req, res) => {
     }
 };
 
-
 exports.replyComment = async (req, res) => {
     try {
         const { mangaId, commentId } = req.params;
         const { userId, content } = req.body;
 
-        // Kiểm tra dữ liệu đầu vào
-        if (!userId || !content) {
+        if (!userId || !content?.trim()) {
             return res.status(400).json({
                 status: false,
                 message: 'Missing userId or content'
             });
         }
 
-        const mangaComments = await MangaComments.findOne({ mangaId });
+        const newReply = {
+            userId,
+            content: content.trim(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
 
-        if (!mangaComments) {
-            return res.status(404).json({
-                status: false,
-                message: 'Manga not found'
-            });
-        }
+        const result = await MangaComments.updateOne(
+            {
+                mangaId,
+                'comments._id': commentId
+            },
+            {
+                $push: {
+                    'comments.$.replies': newReply
+                }
+            }
+        );
 
-        // Tìm bình luận mẹ
-        const comment = mangaComments.comments.id(commentId);
-
-        if (!comment) {
+        if (result.matchedCount === 0) {
             return res.status(404).json({
                 status: false,
                 message: 'Comment not found'
             });
         }
 
-        // Thêm reply mới
-        comment.replies.push({ userId, content });
-        await mangaComments.save();
-
-        // Lấy reply vừa thêm
-        const newReply = comment.replies[comment.replies.length - 1];
-
-        res.status(201).json({
+        return res.status(201).json({
             status: true,
-            message: 'Reply added successfully',
-            data: newReply
+            message: 'Reply added successfully'
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Failed to add reply',
             error: error.message
@@ -221,47 +216,40 @@ exports.editReply = async (req, res) => {
         const { mangaId, commentId, replyId } = req.params;
         const { content } = req.body;
 
-        if (!content) {
-            return res.status(400).json({
-                status: false,
-                message: 'Missing content to update'
-            });
-        }
+        const result = await MangaComments.updateOne(
+            {
+                mangaId,
+                'comments._id': commentId,
+                'comments.replies._id': replyId
+            },
+            {
+                $set: {
+                    'comments.$[comment].replies.$[reply].content': content.trim(),
+                    'comments.$[comment].replies.$[reply].updatedAt': new Date(),
+                }
+            },
+            {
+                arrayFilters: [
+                    { 'comment._id': commentId },
+                    { 'reply._id': replyId }
+                ]
+            }
+        );
 
-        const mangaComments = await MangaComments.findOne({ mangaId });
-        if (!mangaComments) {
-            return res.status(404).json({
-                status: false,
-                message: 'Manga not found'
-            });
-        }
-
-        const comment = mangaComments.comments.id(commentId);
-        if (!comment) {
-            return res.status(404).json({
-                status: false,
-                message: 'Comment not found'
-            });
-        }
-
-        const reply = comment.replies.id(replyId);
-        if (!reply) {
+        if (result.modifiedCount === 0) {
             return res.status(404).json({
                 status: false,
                 message: 'Reply not found'
             });
         }
 
-        reply.content = content;
-        await mangaComments.save();
-
-        res.status(200).json({
+        return res.status(200).json({
             status: true,
-            message: 'Reply updated successfully',
-            data: reply
+            message: 'Reply updated successfully'
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Failed to update reply',
             error: error.message
@@ -273,47 +261,37 @@ exports.deleteReply = async (req, res) => {
     try {
         const { mangaId, commentId, replyId } = req.params;
 
-        const mangaComments = await MangaComments.findOne({ mangaId });
-        if (!mangaComments) {
-            return res.status(404).json({
-                status: false,
-                message: 'Manga not found'
-            });
-        }
+        const result = await MangaComments.updateOne(
+            {
+                mangaId,
+                'comments._id': commentId
+            },
+            {
+                $pull: {
+                    'comments.$.replies': {
+                        _id: replyId
+                    }
+                }
+            }
+        );
 
-        const comment = mangaComments.comments.id(commentId);
-        if (!comment) {
-            return res.status(404).json({
-                status: false,
-                message: 'Comment not found'
-            });
-        }
-
-        // Tìm reply trong mảng replies của comment
-        const replyIndex = comment.replies.findIndex(reply => reply._id.toString() === replyId);
-        if (replyIndex === -1) {
+        if (result.modifiedCount === 0) {
             return res.status(404).json({
                 status: false,
                 message: 'Reply not found'
             });
         }
 
-        // Xóa reply
-        comment.replies.splice(replyIndex, 1);
-
-        await mangaComments.save();
-
-        res.status(200).json({
+        return res.status(200).json({
             status: true,
             message: 'Reply deleted successfully'
         });
+
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             status: false,
             message: 'Failed to delete reply',
             error: error.message
         });
     }
 };
-
-
