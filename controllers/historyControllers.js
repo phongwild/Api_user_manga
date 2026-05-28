@@ -129,3 +129,48 @@ module.exports.clearOldHistory = async (req, res) => {
         res.status(500).json({ status: false, message: 'Internal server error' });
     }
 };
+
+module.exports.removeHistory = async (req, res) => {
+    const { uid } = req.params;
+    const { mangaId } = req.body;
+
+    try {
+        const result = await User.updateOne(
+            { _id: uid },
+            {
+                $pull: {
+                    history: {
+                        mangaId: mangaId
+                    }
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'User not found'
+            });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'History item not found'
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            message: 'History item removed successfully'
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
+    }
+};
