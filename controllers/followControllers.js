@@ -5,86 +5,149 @@ module.exports.follow = async (req, res) => {
     const { mangaId } = req.body;
 
     try {
-        const user = await User.findById(uid);
-        if (!user) {
-            return res.status(400).json({ status: false, message: 'User not found' });
-        }
-
-        if (user.follow_list.includes(mangaId)) {
-            return res.status(200).json({ status: true, alreadyFollowed: true, message: 'Manga is already in follow list' });
-        }
-
-        await User.findByIdAndUpdate(uid, {
-            $addToSet: {
-                follow_list: mangaId
+        const result = await User.updateOne(
+            {
+                _id: uid,
+                follow_list: {
+                    $ne: mangaId
+                }
+            },
+            {
+                $push: {
+                    follow_list: {
+                        $each: [mangaId],
+                        $position: 0
+                    }
+                }
             }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'User not found'
+            });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(200).json({
+                status: true,
+                alreadyFollowed: true,
+                message: 'Manga is already in follow list'
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            alreadyFollowed: false,
+            message: 'Manga added to follow list'
         });
 
-        res.status(200).json({ status: true, alreadyFollowed: false, message: 'Manga added to follow list' });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Internal server error' });
+        console.error(error);
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
     }
 };
-
-
 
 module.exports.remove_manga_from_follows = async (req, res) => {
     const { uid } = req.params;
     const { mangaId } = req.body;
 
     try {
-        const user = await User.findById(uid);
-        if (!user) {
-            return res.status(404).json({ status: false, message: 'User not found' });
-        }
-
-        // Kiểm tra nếu manga không có trong danh sách follow
-        if (!user.follow_list.includes(mangaId)) {
-            return res.status(200).json({ status: true, alreadyRemoved: true, message: 'Manga is not in follow list' });
-        }
-
-        // Xóa manga khỏi danh sách follow
-        await User.findByIdAndUpdate(uid, {
-            $pull: {
+        const result = await User.updateOne(
+            {
+                _id: uid,
                 follow_list: mangaId
+            },
+            {
+                $pull: {
+                    follow_list: mangaId
+                }
             }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'User not found'
+            });
+        }
+
+        if (result.modifiedCount === 0) {
+            return res.status(200).json({
+                status: true,
+                alreadyRemoved: true,
+                message: 'Manga is not in follow list'
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            alreadyRemoved: false,
+            message: 'Manga removed from follow list'
         });
 
-        res.status(200).json({ status: true, alreadyRemoved: false, message: 'Manga removed from follow list' });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Internal server error' });
+        console.error(error);
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
     }
 };
 
-
 module.exports.getList = async (req, res) => {
     const { uid } = req.params;
-    const { offset = 1, limit = 10 } = req.query; // offset mặc định là 1 (trang 1)
+    const { offset = 1, limit = 10 } = req.query;
 
     try {
-        const user = await User.findById(uid);
-        if (!user) {
-            return res.status(400).json({ status: false, message: 'User not found' });
-        }
-
         const page = Math.max(1, parseInt(offset) || 1);
         const pageSize = Math.max(1, parseInt(limit) || 10);
-        const start = (page - 1) * pageSize; // tính vị trí bắt đầu của trang
-        const reversedList = [...user.follow_list].reverse();
-        const mangaList = reversedList.slice(start, start + pageSize);
+        const start = (page - 1) * pageSize;
 
+        const user = await User.findById(
+            uid,
+            {
+                follow_list: {
+                    $slice: [start, pageSize]
+                }
+            }
+        ).lean();
 
-        res.status(200).json({
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: 'User not found'
+            });
+        }
+
+        const totalUser = await User.findById(uid)
+            .select('follow_list')
+            .lean();
+
+        const total = totalUser.follow_list.length;
+
+        return res.status(200).json({
             status: true,
-            data: mangaList,
-            total: user.follow_list.length,
+            data: user.follow_list,
+            total,
             currentPage: page,
-            totalPages: Math.ceil(user.follow_list.length / pageSize),
+            totalPages: Math.ceil(total / pageSize),
             limit: pageSize
         });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'Internal server error' });
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
     }
 };
 
@@ -93,14 +156,14 @@ module.exports.check_follow = async (req, res) => {
     const { mangaId } = req.query;
 
     try {
-        const user = await User.findOne({
+        const exists = await User.exists({
             _id: uid,
             follow_list: mangaId
-        }).select('_id');
+        });
 
         return res.status(200).json({
             status: true,
-            isFollowing: !!user,
+            isFollowing: !!exists
         });
 
     } catch (error) {
