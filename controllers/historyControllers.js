@@ -5,21 +5,21 @@ module.exports.history = async (req, res) => {
     const { mangaId } = req.body;
 
     try {
-        const user = await User.findById(uid);
-        if (!user) {
-            return res.status(400).json({ status: false, message: 'User not found' });
-        }
-
-        // Kiểm tra xem manga đã có trong history chưa
-        const existingEntry = user.history.find(
-            item => item.mangaId === mangaId
+        // update thời gian nếu đã tồn tại
+        const updated = await User.updateOne(
+            {
+                _id: uid,
+                'history.mangaId': mangaId
+            },
+            {
+                $set: {
+                    'history.$.addedAt': new Date()
+                }
+            }
         );
 
-        if (existingEntry) {
-            existingEntry.addedAt = new Date();
-
-            await user.save();
-
+        // nếu manga đã tồn tại
+        if (updated.modifiedCount > 0) {
             return res.status(200).json({
                 status: true,
                 alreadyExists: true,
@@ -27,58 +27,88 @@ module.exports.history = async (req, res) => {
             });
         }
 
-        user.history.push({
-            mangaId,
-            addedAt: new Date(),
-        });
-        user.history.sort(
-            (a, b) => new Date(b.addedAt) - new Date(a.addedAt)
+        // chưa tồn tại thì push mới
+        await User.updateOne(
+            { _id: uid },
+            {
+                $push: {
+                    history: {
+                        $each: [
+                            {
+                                mangaId,
+                                addedAt: new Date()
+                            }
+                        ],
+                        $position: 0,
+                        $slice: 200
+                    }
+                }
+            }
         );
 
-        user.history = user.history.slice(0, 200);
-
-        await user.save();
         return res.status(200).json({
             status: true,
             alreadyExists: false,
             message: 'Manga added to history'
         });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'Internal server error' });
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
     }
 };
 
-
-
 module.exports.getList = async (req, res) => {
     const { uid } = req.params;
-    const { offset = 1, limit = 10 } = req.query; // offset mặc định là 1 (trang 1)
+    const { offset = 1, limit = 10 } = req.query;
 
     try {
-        const user = await User.findById(uid);
-        if (!user) {
-            return res.status(400).json({ status: false, message: 'User not found' });
-        }
-
         const page = Math.max(1, parseInt(offset) || 1);
         const pageSize = Math.max(1, parseInt(limit) || 10);
-        const start = (page - 1) * pageSize; // tính vị trí bắt đầu của trang
-        const sortedList = [...user.history].sort(
-            (a, b) => new Date(b.addedAt) - new Date(a.addedAt)
-        );
-        const mangaList = sortedList.slice(start, start + pageSize);
-        res.status(200).json({
+        const start = (page - 1) * pageSize;
+
+        const user = await User.findById(
+            uid,
+            {
+                history: {
+                    $slice: [start, pageSize]
+                }
+            }
+        ).lean();
+
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: 'User not found'
+            });
+        }
+
+        const totalUser = await User.findById(uid)
+            .select('history')
+            .lean();
+
+        const total = totalUser.history.length;
+
+        return res.status(200).json({
             status: true,
-            data: mangaList,
-            total: user.history.length,
+            data: user.history,
+            total,
             currentPage: page,
-            totalPages: Math.ceil(user.history.length / pageSize),
+            totalPages: Math.ceil(total / pageSize),
             limit: pageSize
         });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'Internal server error' });
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
     }
 };
 
@@ -86,47 +116,42 @@ module.exports.clearOldHistory = async (req, res) => {
     const { uid } = req.params;
 
     try {
-        const user = await User.findById(uid);
-        if (!user) {
-            return res.status(400).json({ status: false, message: 'User not found' });
-        }
-
-        const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-        // Lọc ra những mục còn lại (chưa quá 7 ngày)
-        const originalLength = user.history.length;
-        if (originalLength === 0) {
-            return res.status(200).json({
-                status: true,
-                removed: 0,
-                remaining: 0,
-                message: 'No history to clear'
-            });
-        }
-        const newHistory = user.history.filter(
-            item => new Date(item.addedAt) > sevenDaysAgo
+        const sevenDaysAgo = new Date(
+            Date.now() - 7 * 24 * 60 * 60 * 1000
         );
 
-        // Tính xem đã xoá bao nhiêu mục
-        const removedCount = originalLength - newHistory.length;
+        const result = await User.updateOne(
+            { _id: uid },
+            {
+                $pull: {
+                    history: {
+                        addedAt: {
+                            $lt: sevenDaysAgo
+                        }
+                    }
+                }
+            }
+        );
 
-        if (removedCount > 0) {
-            await User.updateOne(
-                { _id: uid },
-                { $set: { history: newHistory } }
-            );
+        if (result.matchedCount === 0) {
+            return res.status(404).json({
+                status: false,
+                message: 'User not found'
+            });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             status: true,
-            removed: removedCount,
-            remaining: user.history.length,
-            message: `${removedCount} history entries older than 7 days removed`
+            message: 'Old history cleared successfully'
         });
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ status: false, message: 'Internal server error' });
+
+        return res.status(500).json({
+            status: false,
+            message: 'Internal server error'
+        });
     }
 };
 
@@ -140,7 +165,7 @@ module.exports.removeHistory = async (req, res) => {
             {
                 $pull: {
                     history: {
-                        mangaId: mangaId
+                        mangaId
                     }
                 }
             }
