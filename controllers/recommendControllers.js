@@ -153,7 +153,7 @@ exports.getRecommendations = async (req, res) => {
                 .sort({
                     followedCount: -1
                 })
-                .limit(5000)
+                .limit(1000)
                 .lean();
 
         const recommendations = [];
