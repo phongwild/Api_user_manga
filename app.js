@@ -42,6 +42,7 @@ const removeOldHistoryCron = require('./utils/cronJob');
 const auth = require('./routes/authRoutes');
 const upload = require('./routes/uploadRoute');
 const reading = require('./routes/readingRoutes');
+const recommend = require('./routes/recommendRoutes');
 const mangadex = require('./routes/proxyMangaDexRoutes');
 
 app.use('/user', user);
@@ -51,6 +52,7 @@ app.use('/comments', comment);
 app.use('/auth', auth);
 app.use('/upload', upload);
 app.use('/reading', reading);
+app.use('/recommend', recommend);
 app.use('/mangadex', mangadex);
 
 
