@@ -2,29 +2,30 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 const authCtrl = require('../controllers/authControllers')
+const catchAsync = require('../utils/catchAsync');
+const { isLoggedIn } = require('../middleware.js');
 
-// Khởi tạo xác thực với Google
-router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+router.post('/login/google', authCtrl.loginMobile);
 
-// Xử lý callback từ Google
-router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    (req, res) => {
-        // Xác thực thành công, chuyển hướng đến trang chính
-        res.redirect('/');
-    }
-);
+router.route('/login')
+    .post(catchAsync(authCtrl.login));
 
-// Đăng xuất
-router.get('/logout', (req, res) => {
-    req.logout(() => {
-        res.redirect('/');
-    });
-});
+router.route('/register')
+    .post(catchAsync(authCtrl.register));
 
-router.post('/login', authCtrl.loginMobile);
+router.route('/verify-otp')
+    .post(authCtrl.verifyOtp);
 
+router.route('/logout')
+    .get(catchAsync(authCtrl.logout));
+
+router.route('/change-password/:id')
+    .put(catchAsync(authCtrl.changePassword));
+
+router.route('/forgotpassword')
+    .post(catchAsync(authCtrl.forgotPassword));
+
+router.route('/resetpassword/:userId/:token')
+    .post(catchAsync(authCtrl.resetPassword));
 
 module.exports = router;
