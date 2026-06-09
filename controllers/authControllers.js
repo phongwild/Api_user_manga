@@ -1,14 +1,16 @@
+require('dotenv').config();
 const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const Mailgen = require('mailgen');
 const sendOtp = require('../utils/sendOTP');
 const otpModel = require('../models/otpModel');
 const redisClient = require('../utils/redisClient');
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const { generateAccessToken, generateRefreshToken } = require('../utils/tokenUtils');
 
 const OTP_RATE_LIMIT = 5;
 const OTP_RATE_LIMIT_TIME = 60 * 5;
@@ -45,8 +47,15 @@ exports.loginMobile = async (req, res) => {
                 await user.save();
             }
         }
-        const token = jwt.sign({ id: user._id }, `${process.env.SECRET}`, { expiresIn: '30d' });
-        res.cookie('jwt', token, { signed: true, httpOnly: true, maxAge: 1000 * 60 * 60 }).json(user);
+        const accessToken =
+            generateAccessToken(user._id);
+
+        const refreshToken =
+            generateRefreshToken(
+                user._id,
+                user.tokenVersion
+            );
+        res.json({ accessToken, refreshToken, user });
     } catch (error) {
         res.status(500).json({ status: false, message: 'Internal Server Error', error: error.message });
     }
@@ -59,15 +68,9 @@ module.exports.login = async (req, res) => {
         email = email.toLowerCase();
         const user = await User.findOne({ email: email });
         if (user && bcrypt.compareSync(password, user.password)) {
-            const token = jwt.sign({ id: user._id }, `${process.env.SECRET}`, { expiresIn: '30d' });
-            res.cookie('jwt', token, { signed: true, httpOnly: true, maxAge: 1000 * 60 * 60 }).json({
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                avatar: user.avatar,
-                follow_list: user.follow_list,
-                history: user.history,
-            });
+            const accessToken = generateAccessToken(user._id);
+            const refreshToken = generateRefreshToken(user._id, user.tokenVersion);
+            res.json({ accessToken, refreshToken, user });
         }
         else {
             res.status(400).json('login failed');
@@ -105,8 +108,10 @@ module.exports.register = async (req, res) => {
             return res.status(429).json(`Hãy đợi ${waitTime} giây trước khi gửi OTP tiếp theo.`);
         }
 
-        // Tạo OTP ngẫu nhiên
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = crypto.randomInt(
+            100000,
+            999999
+        ).toString();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // Hết hạn sau 5 phút
 
         // Lưu OTP vào MongoDB
@@ -174,6 +179,30 @@ module.exports.verifyOtp = async (req, res) => {
     } catch (error) {
         console.error('❌ Lỗi khi xác minh OTP:', error);
         return res.status(500).json('Lỗi máy chủ.');
+    }
+};
+
+exports.refresh = async (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken)
+        return res.status(401).json({ message: 'Missing refresh token' });
+
+    try {
+        const payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+        const user = await User.findById(payload.id);
+
+        if (!user)
+            return res.status(401).json({ message: 'Invalid token' });
+
+        if (payload.tokenVersion !== user.tokenVersion)
+            return res.status(401).json({ message: 'Token revoked' });
+
+        const accessToken = generateAccessToken(user._id);
+
+        return res.json({ accessToken });
+    } catch (error) {
+        return res.status(401).json({ message: 'Invalid refresh token' });
     }
 };
 

@@ -16,6 +16,9 @@ router.route('/register')
 router.route('/verify-otp')
     .post(authCtrl.verifyOtp);
 
+router.route('/refresh')
+    .post(catchAsync(authCtrl.refresh));
+
 router.route('/logout')
     .get(catchAsync(authCtrl.logout));
 
