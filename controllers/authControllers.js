@@ -206,8 +206,25 @@ exports.refresh = async (req, res) => {
     }
 };
 
-module.exports.logout = (req, res) => {
-    res.clearCookie('jwt').json('logout');
+module.exports.logout = async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+        return res.status(400).json({ message: 'Missing refresh token' });
+    }
+    try {
+        const payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+        const user = await User.findById(payload.id);
+        if (!user) {
+            return res.status(401).json({ message: 'User not found' });
+        }
+        user.tokenVersion += 1;
+        await user.save();
+        return res.json({
+            message: 'Logout success'
+        });
+    } catch (err) {
+        return res.status(401).json({ message: 'Invalid refresh token' });
+    }
 };
 
 module.exports.forgotPassword = async (req, res) => {
