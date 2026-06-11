@@ -1,30 +1,43 @@
-const User = require('./models/userModel')
+require('dotenv').config();
+
 const jwt = require('jsonwebtoken');
+const User = require('./models/userModel');
 
-module.exports.isLoggedIn = async  (req, res, next) => {   
-    const token = req.signedCookies.jwt;
-    if(token){
-        const decoded = jwt.verify(token, `${process.env.SECRET}`);
-        const user = await User.findById(decoded.id);
-        if(user) next();
-        else res.status(400).json('invalid token');
-    }
-    else{
-        res.status(400).json('no token');
-    }
-}
+module.exports.isLoggedIn = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
 
-
-module.exports.isSubscribed = async (req, res, next) => {
-    const token = req.signedCookies.jwt;
-    if(token){
-        const decoded = jwt.verify(token, `${process.env.SECRET}`);
-        const user = await User.findById(decoded.id);
-        if(user.subscription_status) next();
-        else res.status(400).json('not subscribed');
+    if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({
+            message: 'No token'
+        });
     }
-    else{
-        res.status(400).json('no token');
-    }
-}
 
+    try {
+        const token = authHeader.split(' ')[1];
+
+        const decoded = jwt.verify(
+            token,
+            process.env.ACCESS_SECRET
+        );
+
+        const user = await User.findById(
+            decoded.id
+        );
+
+        if (!user) {
+            return res.status(401).json({
+                message: 'Invalid token'
+            });
+        }
+
+        req.user = user;
+
+        next();
+    } catch (error) {
+        console.error(error);
+
+        return res.status(401).json({
+            message: 'Invalid token'
+        });
+    }
+};

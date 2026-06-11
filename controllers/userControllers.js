@@ -33,15 +33,7 @@ module.exports.getUsers = async (req, res) => {
 }
 
 module.exports.profile = async (req, res) => {
-    const token = req.signedCookies.jwt;
-    if (token) {
-        const decoded = jwt.verify(token, `${process.env.SECRET}`);
-        const user = await User.findById(decoded.id);
-        res.json(user);
-    }
-    else {
-        res.status(400).json('no token');
-    }
+    res.json(req.user);
 }
 
 module.exports.getUserByID = async (req, res) => {
