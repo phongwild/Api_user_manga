@@ -45,6 +45,13 @@ module.exports.proxy = async (req, res) => {
             code: error.code,
             message: error.message,
         });
+        console.error({
+            code: error.code,
+            errno: error.errno,
+            syscall: error.syscall,
+            address: error.address,
+            port: error.port
+        });
 
         if (error.response) {
             return res.status(error.response.status).json(error.response.data);
