@@ -1,18 +1,35 @@
 const axios = require('axios');
+const dns = require('dns');
+const https = require('https');
+
+dns.setDefaultResultOrder('ipv4first');
+
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+    family: 4,
+});
 
 module.exports.proxy = async (req, res) => {
     try {
-        const targetUrl = `https://api.mangadex.org${req.url}`;
+        const headers = {
+            'Accept-Encoding': 'gzip, deflate, br',
+        };
+
+        if (req.headers['content-type']) {
+            headers['Content-Type'] = req.headers['content-type'];
+        }
+
+        if (req.headers['authorization']) {
+            headers['Authorization'] = req.headers['authorization'];
+        }
 
         const config = {
             method: req.method,
-            url: targetUrl,
-            headers: {
-                'Content-Type': req.headers['content-type'] || 'application/json',
-                'Authorization': req.headers['authorization'] || '',
-                'Accept-Encoding': 'gzip, deflate, br',
-            },
-            timeout: 10000
+            url: `https://api.mangadex.org${req.path}`,
+            params: req.query,
+            headers,
+            httpsAgent,
+            timeout: 10000,
         };
 
         if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
@@ -22,36 +39,20 @@ module.exports.proxy = async (req, res) => {
         const response = await axios(config);
 
         res.setHeader('Access-Control-Allow-Origin', '*');
-
-        // Trả về dữ liệu từ MangaDex
-        res.status(response.status).json(response.data);
-
+        return res.status(response.status).json(response.data);
     } catch (error) {
-        console.error('Lỗi proxy MangaDex:', error.message);
+        console.error('MangaDex request failed:', {
+            code: error.code,
+            message: error.message,
+        });
 
         if (error.response) {
-            // MangaDex trả về lỗi (400, 404, 500...)
-            console.error('Response data:', error.response.data);
-            res.status(error.response.status).json({
-                message: 'Lỗi khi gọi MangaDex API',
-                error: error.response.data
-            });
-
-        } else if (error.request) {
-            // Request gửi đi nhưng không có phản hồi
-            console.error('Không nhận được phản hồi từ MangaDex:', error.request);
-            res.status(500).json({
-                message: 'Không nhận được phản hồi từ MangaDex',
-                error: error.message
-            });
-
-        } else {
-            // Lỗi bất ngờ (config sai, axios crash, v.v)
-            console.error('Lỗi không xác định:', error.message);
-            res.status(500).json({
-                message: 'Lỗi không xác định khi gọi MangaDex API',
-                error: error.message
-            });
+            return res.status(error.response.status).json(error.response.data);
         }
+
+        return res.status(500).json({
+            message: 'Không nhận được phản hồi từ MangaDex',
+            error: error.message,
+        });
     }
 };
