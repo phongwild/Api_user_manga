@@ -1,9 +1,10 @@
 const router = require('express').Router();
 const catchAsync = require('../utils/catchAsync');
 const followCtrl = require('../controllers/followControllers');
+const { isLoggedIn } = require('../middleware');
 
-router.route('/:uid')
-    .get(catchAsync(followCtrl.getList));
+router.route('/')
+    .get(isLoggedIn, catchAsync(followCtrl.getList));
 
 router.route('/add/:uid')
     .post(catchAsync(followCtrl.follow));

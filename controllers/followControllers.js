@@ -102,9 +102,8 @@ module.exports.remove_manga_from_follows = async (req, res) => {
 };
 
 module.exports.getList = async (req, res) => {
-    const { uid } = req.params;
     const { offset = 1, limit = 10 } = req.query;
-
+    const uid = req.user._id;
     try {
         const page = Math.max(1, parseInt(offset) || 1);
         const pageSize = Math.max(1, parseInt(limit) || 10);
