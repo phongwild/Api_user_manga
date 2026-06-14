@@ -47,15 +47,16 @@ exports.loginMobile = async (req, res) => {
                 await user.save();
             }
         }
-        const accessToken =
-            generateAccessToken(user._id);
+        const accessToken = generateAccessToken(user._id);
 
-        const refreshToken =
-            generateRefreshToken(
-                user._id,
-                user.tokenVersion
-            );
-        res.json({ accessToken, refreshToken, user });
+        const refreshToken = generateRefreshToken(user._id, user.tokenVersion);
+        const userResponse = {
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            avatar: user.avatar,
+        };
+        res.json({ accessToken, refreshToken, user: userResponse });
     } catch (error) {
         res.status(500).json({ status: false, message: 'Internal Server Error', error: error.message });
     }
@@ -70,7 +71,13 @@ module.exports.login = async (req, res) => {
         if (user && bcrypt.compareSync(password, user.password)) {
             const accessToken = generateAccessToken(user._id);
             const refreshToken = generateRefreshToken(user._id, user.tokenVersion);
-            res.json({ accessToken, refreshToken, user });
+            const userResponse = {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                avatar: user.avatar,
+            };
+            res.json({ accessToken, refreshToken, user: userResponse });
         }
         else {
             res.status(400).json('login failed');
