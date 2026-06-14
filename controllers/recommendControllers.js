@@ -122,7 +122,7 @@ const buildUserProfile = async (uid) => {
 
 exports.getRecommendations = async (req, res) => {
     try {
-        const { uid } = req.params;
+        const uid = req.user._id;
 
         const {
             profile,
