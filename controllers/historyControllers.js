@@ -96,7 +96,6 @@ module.exports.getList = async (req, res) => {
                 message: 'User not found'
             });
         }
-        console.log(result[0]);
         const { history, total } = result[0];
 
         let mangas = [];

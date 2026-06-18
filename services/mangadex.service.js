@@ -7,7 +7,7 @@ module.exports.getMangasByIds = async (ids) => {
         }
 
         const response = await axios.get(
-            'https://tabibito.indevs.in/api/mangadex/manga',
+            'https://api.mangadex.org/manga',
             {
                 params: {
                     ids,
