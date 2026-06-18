@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const { getMangasByIds } = require('../services/mangadex.service');
 
 module.exports.history = async (req, res) => {
     const { uid } = req.params;
@@ -71,31 +72,52 @@ module.exports.getList = async (req, res) => {
         const pageSize = Math.max(1, parseInt(limit) || 10);
         const start = (page - 1) * pageSize;
 
-        const user = await User.findById(
-            uid,
+        const result = await User.aggregate([
             {
-                history: {
-                    $slice: [start, pageSize]
+                $match: {
+                    _id: uid
+                }
+            },
+            {
+                $project: {
+                    total: {
+                        $size: '$history'
+                    },
+                    history: {
+                        $slice: ['$history', start, pageSize]
+                    }
                 }
             }
-        ).lean();
+        ]);
 
-        if (!user) {
+        if (!result.length) {
             return res.status(404).json({
                 status: false,
                 message: 'User not found'
             });
         }
+        console.log(result[0]);
+        const { history, total } = result[0];
 
-        const totalUser = await User.findById(uid)
-            .select('history')
-            .lean();
+        let mangas = [];
 
-        const total = totalUser.history.length;
+        if (history.length) {
+            const mangaIds = history.map(item => item.mangaId);
+
+            const response = await getMangasByIds(mangaIds);
+
+            const mangaMap = new Map(
+                response.map(manga => [manga.id, manga])
+            );
+
+            mangas = history
+                .map(item => mangaMap.get(item.mangaId))
+                .filter(Boolean);
+        }
 
         return res.status(200).json({
             status: true,
-            data: user.history,
+            data: mangas,
             total,
             currentPage: page,
             totalPages: Math.ceil(total / pageSize),
