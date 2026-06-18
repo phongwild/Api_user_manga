@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const { getMangasByIds } = require('../services/mangadex.service');
 
 module.exports.follow = async (req, res) => {
     const { uid } = req.params;
@@ -101,39 +102,111 @@ module.exports.remove_manga_from_follows = async (req, res) => {
     }
 };
 
+// module.exports.getList = async (req, res) => {
+//     const { offset = 1, limit = 10 } = req.query;
+//     const uid = req.user._id;
+//     try {
+//         const page = Math.max(1, parseInt(offset) || 1);
+//         const pageSize = Math.max(1, parseInt(limit) || 10);
+//         const start = (page - 1) * pageSize;
+
+//         const user = await User.findById(
+//             uid,
+//             {
+//                 follow_list: {
+//                     $slice: [start, pageSize]
+//                 }
+//             }
+//         ).lean();
+
+//         if (!user) {
+//             return res.status(404).json({
+//                 status: false,
+//                 message: 'User not found'
+//             });
+//         }
+
+//         const totalUser = await User.findById(uid)
+//             .select('follow_list')
+//             .lean();
+
+//         const total = totalUser.follow_list.length;
+
+//         return res.status(200).json({
+//             status: true,
+//             data: user.follow_list,
+//             total,
+//             currentPage: page,
+//             totalPages: Math.ceil(total / pageSize),
+//             limit: pageSize
+//         });
+
+//     } catch (error) {
+//         console.error(error);
+
+//         return res.status(500).json({
+//             status: false,
+//             message: 'Internal server error'
+//         });
+//     }
+// };
+
 module.exports.getList = async (req, res) => {
     const { offset = 1, limit = 10 } = req.query;
     const uid = req.user._id;
+
     try {
         const page = Math.max(1, parseInt(offset) || 1);
         const pageSize = Math.max(1, parseInt(limit) || 10);
         const start = (page - 1) * pageSize;
 
-        const user = await User.findById(
-            uid,
+        const result = await User.aggregate([
             {
-                follow_list: {
-                    $slice: [start, pageSize]
+                $match: {
+                    _id: uid
+                }
+            },
+            {
+                $project: {
+                    total: {
+                        $size: '$follow_list'
+                    },
+                    follow_list: {
+                        $slice: ['$follow_list', start, pageSize]
+                    }
                 }
             }
-        ).lean();
+        ]);
 
-        if (!user) {
+        if (!result.length) {
             return res.status(404).json({
                 status: false,
                 message: 'User not found'
             });
         }
 
-        const totalUser = await User.findById(uid)
-            .select('follow_list')
-            .lean();
+        const { follow_list, total } = result[0];
 
-        const total = totalUser.follow_list.length;
+        let mangas = [];
+
+        if (follow_list.length) {
+            const response = await getMangasByIds(follow_list);
+
+
+            const mangaMap = new Map(
+                response.map(
+                    manga => [manga.id, manga]
+                )
+            );
+
+            mangas = follow_list
+                .map(id => mangaMap.get(id))
+                .filter(Boolean);
+        }
 
         return res.status(200).json({
             status: true,
-            data: user.follow_list,
+            data: mangas,
             total,
             currentPage: page,
             totalPages: Math.ceil(total / pageSize),

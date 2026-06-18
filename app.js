@@ -25,6 +25,19 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser(process.env.SECRET));
 app.use(express.json());
 
+// Middleware log time
+app.use((req, res, next) => {
+    const start = Date.now();
+
+    res.on('finish', () => {
+        console.log(
+            `${req.method} ${req.originalUrl} - ${Date.now() - start}ms`
+        );
+    });
+
+    next();
+});
+
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -33,7 +46,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-const removeOldHistoryCron = require('./utils/cronJob');
 const routes = require('./routes/index');
 app.use('/api', routes);
 
@@ -46,13 +58,6 @@ if (fs.existsSync(swaggerPath)) {
     console.error('⚠️  swagger_output.json not found!');
 }
 
-// Cron job dọn dẹp lịch sử hàng ngày
-cron.schedule('0 20 * * *', () => {
-    console.log("Server Time Now:", new Date().toLocaleString());
-    console.log('Running history cleanup every day...');
-    removeOldHistoryCron();
-});
-
 // Xử lý route không tồn tại
 app.all('*', (req, res, next) => {
     next(new ExpressError('Page Not Found', 404));
@@ -62,6 +67,14 @@ app.all('*', (req, res, next) => {
 app.use((err, req, res, next) => {
     const { statusCode = 500, message = 'Something went wrong' } = err;
     res.status(statusCode).json({ message });
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
 });
 
 // Chạy server
